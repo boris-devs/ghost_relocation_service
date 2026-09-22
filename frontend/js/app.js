@@ -252,27 +252,22 @@ function locationOptionsHtml(selectedId) {
 function renderMatching() {
   const list = document.getElementById("matching-results");
   const empty = document.getElementById("matching-empty");
-  const existingDebug = document.getElementById("matching-debug");
 
   if (state.ghosts.length === 0 || state.locations.length === 0) {
     list.innerHTML = "";
     empty.classList.remove("hidden");
-    if (existingDebug) existingDebug.remove();
     return;
   }
   empty.classList.add("hidden");
 
   if (state.matchResults.length === 0) {
     list.innerHTML = `<p class="hint">Загрузка предложений…</p>`;
-    if (existingDebug) existingDebug.remove();
     return;
   }
 
   list.innerHTML = state.matchResults
     .map((r) => renderMatchCard(r))
     .join("");
-
-  renderMatchDebugPanel();
 }
 
 // Собирает разметку одной карточки. Вынесено из renderMatching() отдельной
@@ -283,39 +278,26 @@ function renderMatching() {
 // вообще успевал обновиться, и внешне это выглядело как "нажал — ничего не
 // изменилось", хотя сервер на самом деле уже всё сохранил.
 function renderMatchCard(r) {
-  if (r.status === "matched") {
+  if (r.status === "matched" && r.assigned === true) {
     const a = r.assignment || {};
-    const isAssigned = r.assigned === true;
     const isManual = a.manual === true;
     const score = typeof a.score === "number" ? a.score : 0;
     const scoreClass = score < 50 ? "low" : "";
-    const statusTag = isAssigned
-      ? '<span class="tag status-assigned">✓ Назначено</span>'
-      : '<span class="tag status-suggested">◌ Предложено — пока не сохранено</span>';
-    const autoManualTag = isAssigned
-      ? isManual
-        ? '<span class="tag warn">✋ Ручной выбор</span>'
-        : '<span class="tag ok">⚙ Назначено автоматически</span>'
-      : "";
+    const statusTag = '<span class="tag status-assigned">✓ Назначено</span>';
+    const autoManualTag = isManual
+      ? '<span class="tag warn">✋ Подобрано ручным режимом</span>'
+      : '<span class="tag ok">⚙ Автоматически подобрано</span>';
     const warnings = (a.warnings || []).length
       ? `<div class="warning-box">⚠ ${a.warnings.map(escapeHtml).join("; ")}</div>`
       : "";
-    const unassignBtn = isAssigned
-      ? `<button class="btn ghost small" data-action="unassign" data-ghost-id="${r.ghost_id}">Снять назначение</button>`
-      : "";
-    const quickAssignBtn = isAssigned
-      ? ""
-      : `<button class="btn small primary" data-action="quick-assign" data-ghost-id="${r.ghost_id}" data-location-id="${a.location_id}">Назначить</button>`;
+    const unassignBtn = `<button class="btn ghost small" data-action="unassign" data-ghost-id="${r.ghost_id}">Снять назначение</button>`;
     const explanation = Array.isArray(a.explanation) ? a.explanation : [];
     return `
-    <div class="card match-card ${isAssigned ? "matched" : "suggested"}" data-ghost-id="${r.ghost_id}" data-assigned="${isAssigned}" data-manual="${isManual}">
+    <div class="card match-card matched" data-ghost-id="${r.ghost_id}" data-assigned="true" data-manual="${isManual}">
       <div class="entity-card">
         <div class="main">
           <div class="match-title-row">
-            <h4>${escapeHtml(r.ghost_name)} → ${escapeHtml(a.location_name || "?")}${
-              isAssigned ? "" : ' <span class="hint-inline">— лучшее авто-предложение</span>'
-            }</h4>
-            ${quickAssignBtn}
+            <h4>${escapeHtml(r.ghost_name)} → ${escapeHtml(a.location_name || "?")}</h4>
           </div>
           <div class="tags-row">${statusTag} ${autoManualTag}</div>
           <ul class="explanation">${explanation.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ul>
@@ -332,6 +314,29 @@ function renderMatchCard(r) {
     </div>`;
   }
 
+  if (r.status === "matched" && r.assigned !== true) {
+    // Место для заявки алгоритм в принципе может подобрать, но кнопку
+    // «Обновить предложения» ещё не нажимали, поэтому ничего не сохранено.
+    // Конкретную кандидатуру и её рейтинг здесь намеренно не показываем —
+    // это не назначение, и такая карточка не должна выглядеть, как будто
+    // место уже закреплено.
+    return `
+    <div class="card match-card pending" data-ghost-id="${r.ghost_id}" data-assigned="false">
+      <div class="main">
+        <div class="match-title-row">
+          <h4>${escapeHtml(r.ghost_name)}</h4>
+        </div>
+        <div class="tags-row"><span class="tag">⏳ Нужен автоподбор</span></div>
+        <p class="hint">Нажмите «↻ Обновить предложения» вверху, чтобы автоматически подобрать этой заявке место — либо выберите место вручную ниже.</p>
+      </div>
+      <div class="select-row">
+        <select data-role="override-select">${locationOptionsHtml("")}</select>
+        <button class="btn small" data-action="manual-assign" data-ghost-id="${r.ghost_id}">Назначить вручную</button>
+      </div>
+      <div class="manual-feedback"></div>
+    </div>`;
+  }
+
   const rejected = (r.rejected_locations || [])
     .map((rl) => `<li><strong>${escapeHtml(rl.location_name)}:</strong> ${(rl.reasons || []).map(escapeHtml).join(", ")}</li>`)
     .join("");
@@ -339,52 +344,18 @@ function renderMatchCard(r) {
   <div class="card match-card impossible" data-ghost-id="${r.ghost_id}">
     <div class="main">
       <div class="match-title-row">
-        <h4>${escapeHtml(r.ghost_name)} → переселение невозможно</h4>
+        <h4>${escapeHtml(r.ghost_name)} → автоматически не подобрано</h4>
       </div>
-      <div class="tags-row"><span class="tag danger">✕ Автоматически не получилось</span></div>
+      <div class="tags-row"><span class="tag danger">🛠 Нужен ручной подбор</span></div>
       <p class="reasons">Причина: ${escapeHtml(r.impossible_reason || "нет подходящих мест")}</p>
       ${rejected ? `<ul class="reasons">${rejected}</ul>` : ""}
     </div>
     <div class="select-row">
       <select data-role="override-select">${locationOptionsHtml("")}</select>
-      <button class="btn small" data-action="manual-assign" data-ghost-id="${r.ghost_id}">Назначить вручную</button>
+      <button class="btn small primary" data-action="manual-assign" data-ghost-id="${r.ghost_id}">Назначить</button>
     </div>
     <div class="manual-feedback"></div>
   </div>`;
-}
-
-// Отладочная панель под списком карточек: сырой JSON последнего ответа
-// GET/POST /api/match, как его прислал сервер, без какой-либо обработки
-// фронтендом. Добавлено, чтобы можно было своими глазами свериться —
-// действительно ли сервер прислал правильные значения assigned/manual,
-// не открывая вкладку Network в браузере. Свёрнуто по умолчанию (<details>).
-function renderMatchDebugPanel() {
-  const existing = document.getElementById("matching-debug");
-  if (existing) existing.remove();
-
-  const wrap = document.createElement("details");
-  wrap.id = "matching-debug";
-  wrap.style.marginTop = "16px";
-  wrap.style.fontSize = "0.8rem";
-  wrap.style.color = "var(--text-dim)";
-
-  const summary = document.createElement("summary");
-  summary.textContent = "Отладка: сырой ответ сервера (что реально пришло из /api/match)";
-  summary.style.cursor = "pointer";
-  wrap.appendChild(summary);
-
-  const pre = document.createElement("pre");
-  pre.style.whiteSpace = "pre-wrap";
-  pre.style.wordBreak = "break-word";
-  pre.style.background = "var(--bg-panel)";
-  pre.style.border = "1px solid var(--border)";
-  pre.style.borderRadius = "8px";
-  pre.style.padding = "10px";
-  pre.style.marginTop = "8px";
-  pre.textContent = JSON.stringify(state.matchResults, null, 2);
-  wrap.appendChild(pre);
-
-  document.getElementById("matching-results").after(wrap);
 }
 
 document.getElementById("matching-results").addEventListener("click", async (e) => {
@@ -392,16 +363,6 @@ document.getElementById("matching-results").addEventListener("click", async (e) 
   if (unassignBtn) {
     await guarded(() => Api.unassign(unassignBtn.dataset.ghostId));
     await guarded(loadMatchStatus);
-    return;
-  }
-
-  const quickAssignBtn = e.target.closest('[data-action="quick-assign"]');
-  if (quickAssignBtn) {
-    const card = quickAssignBtn.closest(".match-card");
-    const feedback = card.querySelector(".manual-feedback");
-    const ghostId = Number(quickAssignBtn.dataset.ghostId);
-    const locationId = Number(quickAssignBtn.dataset.locationId);
-    await tryManualAssign(ghostId, locationId, false, feedback);
     return;
   }
 
