@@ -15,7 +15,8 @@ class AssignmentOut(BaseModel):
 class MatchResultOut(BaseModel):
     ghost_id: int
     ghost_name: str
-    status: str  
+    status: str
+    assigned: bool = False
     assignment: AssignmentOut | None = None
     impossible_reason: str | None = None
     rejected_locations: list[dict] = Field(default_factory=list)
