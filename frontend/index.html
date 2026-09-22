@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Бюро переселения привидений</title>
+<link rel="stylesheet" href="/css/styles.css?v=10">
+</head>
+<body>
+<div id="build-marker" style="background:#ff2d55;color:#fff;font-weight:700;text-align:center;padding:8px;font-size:14px;letter-spacing:0.5px;">
+  БИЛД СТРАНИЦЫ: 2026-09-19 17:10 МСК (v10) — если ты видишь другую дату/версию здесь, значит браузер или nginx показывают старый файл, а не то, что я только что записал
+</div>
+<header class="app-header">
+  <h1>👻 Бюро переселения привидений</h1>
+  <p class="subtitle">Подбираем новым духам новые дома — быстро, тактично, с объяснением.</p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="ghosts">Заявки</button>
+  <button class="tab-btn" data-tab="locations">Места</button>
+  <button class="tab-btn" data-tab="matching">Подбор</button>
+  <button class="tab-btn" data-tab="report">Отчёт</button>
+  <button class="tab-btn" data-tab="worklog">AI Worklog</button>
+</nav>
+
+<div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+<main>
+
+  <!-- ЗАЯВКИ -->
+  <section id="tab-ghosts" class="tab-panel active">
+    <div class="panel-header">
+      <h2>Заявки от привидений</h2>
+      <button class="btn primary" id="open-ghost-form">+ Новая заявка</button>
+    </div>
+
+    <form id="ghost-form" class="card form hidden">
+      <h3>Новая заявка</h3>
+      <div class="form-grid">
+        <label>Имя
+          <input type="text" name="name" required maxlength="200" placeholder="Например, Агата Сумеречная">
+        </label>
+        <label>Уровень тревожности (1–10)
+          <input type="number" name="anxiety_level" min="1" max="10" value="5" required>
+        </label>
+        <label>Любимая температура, °C
+          <input type="number" name="favorite_temperature" value="12" required>
+        </label>
+        <label>Дедлайн переселения
+          <input type="date" name="relocation_deadline" required>
+        </label>
+      </div>
+      <fieldset class="conditions">
+        <legend>Особые условия</legend>
+        <label><input type="checkbox" name="special_conditions" value="needs_attic"> нужен чердак</label>
+        <label><input type="checkbox" name="special_conditions" value="fears_mirrors"> боится зеркал</label>
+        <label><input type="checkbox" name="special_conditions" value="no_humans_nearby"> нельзя рядом с людьми</label>
+        <label><input type="checkbox" name="special_conditions" value="likes_dampness"> любит сырость</label>
+        <label><input type="checkbox" name="special_conditions" value="needs_silence"> нужна тишина</label>
+        <label><input type="checkbox" name="special_conditions" value="needs_darkness"> боится яркого света</label>
+        <label><input type="checkbox" name="special_conditions" value="dislikes_crowds"> не любит тесноту</label>
+      </fieldset>
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Сохранить заявку</button>
+        <button type="button" class="btn ghost" id="cancel-ghost-form">Отмена</button>
+      </div>
+    </form>
+
+    <div id="ghosts-list" class="cards-list"></div>
+    <p id="ghosts-empty" class="empty-state hidden">
+      Пока нет ни одной заявки. Нажмите «+ Новая заявка», чтобы добавить первое привидение.
+    </p>
+  </section>
+
+  <!-- МЕСТА -->
+  <section id="tab-locations" class="tab-panel">
+    <div class="panel-header">
+      <h2>Места переселения</h2>
+      <button class="btn primary" id="open-location-form">+ Новое место</button>
+    </div>
+
+    <form id="location-form" class="card form hidden">
+      <h3>Новое место</h3>
+      <div class="form-grid">
+        <label>Название
+          <input type="text" name="name" required maxlength="200" placeholder="Например, Старый маяк">
+        </label>
+        <label>Тип
+          <input type="text" name="location_type" required placeholder="замок / маяк / библиотека...">
+        </label>
+        <label>Вместимость
+          <input type="number" name="capacity" min="1" value="3" required>
+        </label>
+        <label>Уже занято мест
+          <input type="number" name="occupied" min="0" value="0" required>
+        </label>
+        <label>Освещение
+          <select name="lighting">
+            <option value="dark">тёмное</option>
+            <option value="dim" selected>приглушённое</option>
+            <option value="bright">яркое</option>
+          </select>
+        </label>
+        <label>Уровень шума (0–10)
+          <input type="number" name="noise_level" min="0" max="10" value="2" required>
+        </label>
+        <label>Влажность
+          <select name="humidity">
+            <option value="dry">сухо</option>
+            <option value="normal" selected>нормально</option>
+            <option value="damp">сыро</option>
+          </select>
+        </label>
+        <label>Средняя температура, °C
+          <input type="number" name="ambient_temperature" value="12" required>
+        </label>
+      </div>
+      <fieldset class="conditions">
+        <legend>Параметры места</legend>
+        <label><input type="checkbox" name="has_people"> бывают люди</label>
+        <label><input type="checkbox" name="has_mirrors"> есть зеркала</label>
+        <label><input type="checkbox" name="has_attic"> есть чердак</label>
+      </fieldset>
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Сохранить место</button>
+        <button type="button" class="btn ghost" id="cancel-location-form">Отмена</button>
+      </div>
+    </form>
+
+    <div id="locations-list" class="cards-list"></div>
+    <p id="locations-empty" class="empty-state hidden">
+      Пока нет ни одного места переселения. Добавьте хотя бы одно, чтобы запустить подбор.
+    </p>
+  </section>
+
+  <!-- ПОДБОР -->
+  <section id="tab-matching" class="tab-panel">
+    <div class="panel-header">
+      <h2>Подбор мест</h2>
+      <button class="btn primary" id="run-matching">↻ Обновить предложения</button>
+    </div>
+    <p class="hint">
+      «Обновить предложения» распределяет заявки по срочности дедлайна и уровню
+      тревожности, проверяет жёсткие условия (вместимость, особые требования) и
+      сразу назначает лучшее место каждой ещё не распределённой заявке — карточки
+      с тегом «⚙ Назначено автоматически». Ручные назначения (тег «✋ Ручной выбор»)
+      кнопка не трогает. Заявкам, которым место не нашлось, ставится тег
+      «✕ Автоматически не получилось» — их можно назначить только вручную ниже.
+    </p>
+    <div id="matching-results" class="cards-list"></div>
+    <p id="matching-empty" class="empty-state hidden">
+      Сначала добавьте хотя бы одну заявку и одно место, затем нажмите «Обновить предложения».
+    </p>
+  </section>
+
+  <!-- ОТЧЁТ -->
+  <section id="tab-report" class="tab-panel">
+    <div class="panel-header">
+      <h2>Финальный отчёт</h2>
+      <button class="btn ghost" id="refresh-report">↻ Обновить</button>
+    </div>
+    <div id="report-content"></div>
+  </section>
+
+  <!-- AI WORKLOG -->
+  <section id="tab-worklog" class="tab-panel">
+    <div id="worklog-content" class="card worklog"></div>
+  </section>
+
+</main>
+
+<div id="modal-root"></div>
+
+<script src="/js/worklog-content.js?v=10"></script>
+<script src="/js/api.js?v=10"></script>
+<script src="/js/app.js?v=10"></script>
+</body>
+</html>
